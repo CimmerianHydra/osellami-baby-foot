@@ -12,9 +12,8 @@ class Role(Enum):
 
 class Player:
 
-    def __init__(self, name: str, surname: str, atk_elo: float = 1200.0, def_elo: float = 1200.0) -> None:
+    def __init__(self, name: str, atk_elo: float = 1200.0, def_elo: float = 1200.0) -> None:
         self.name = name
-        self.surname = surname
         self.atk_elo = atk_elo
         self.def_elo = def_elo
         self.atk_exp = 0
@@ -93,16 +92,16 @@ if __name__ == 'main':
     player_list = []
 
     player_list.append(
-        Player("Niki", "Di Giano")
+        Player("Niki Di Giano")
     )
     player_list.append(
-        Player("Pasquale", "Barbato")
+        Player("Pasquale Barbato")
     )
     player_list.append(
-        Player("Vittorio", "Grimaldi", atk_elo=1000)
+        Player("Vittorio Grimaldi", atk_elo=1000)
     )
     player_list.append(
-        Player("Ciro", "Pentangelo", def_elo=1000)
+        Player("Ciro Pentangelo", def_elo=1000)
     )
 
     first_team = Team(player_list[0], player_list[1])
