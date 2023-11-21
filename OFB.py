@@ -2,7 +2,7 @@ import numpy as np
 from enum import Enum
 
 R_PARAMETER = 500.0
-K_MULTIPLIER = 50.0
+K_MULTIPLIER = 20.0
 K_PARAMETER = 300.0
 MAX_SCORE = 8
 

@@ -7,7 +7,7 @@ class PlayerList:
     DATA:list[Player] = []
     
     def __init__(self) -> None:
-        self.load_file()
+        return
 
     def load_file(self):
         with open(self.PLAYER_LIST_PATH, 'rb') as f:
@@ -31,6 +31,7 @@ class PlayerList:
         new_player = Player(name)    
         if not self.search_by_name(name):
             self.DATA.append(new_player)
+        self.DATA.sort(key = lambda x : x.name)
     
     def resolve_match(self, team_1, team_2, score_1, score_2):
         new_match = Match(team_1, team_2)
