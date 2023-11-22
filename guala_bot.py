@@ -5,6 +5,7 @@ from OFB import Role, Team, MAX_SCORE
 from bot_token import TOKEN
 from datetime import datetime
 from functools import wraps
+import pickle as pk
 import os
 import logging
 
@@ -21,8 +22,8 @@ LOG = logging.getLogger(__name__)
 MATCH_CONVO_DICT = {}
 ATK_1, DEF_1, ATK_2, DEF_2, SCORE_1, SCORE_2 = range(6)
 
-USER_WHITELIST = [145267299]
-ADMIN_WHITELIST = [145267299]
+WHITELIST_PATH = "whitelist.bin"
+WHITELIST = {'admin':[],'user':[]}
 
 def generate_player_buttons() -> ReplyKeyboardMarkup:
     # Create a list of InlineKeyboardButtons
@@ -56,7 +57,7 @@ def user_restricted(func):
     @wraps(func)
     def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
         user_id = update.effective_user.id
-        if user_id not in USER_WHITELIST:
+        if user_id not in WHITELIST['user']:
             LOG.info("User with ID %s attempted to run a user restricted command. User was denied access.", update.effective_user.effective_user.id)
             return
         return func(update, context, *args, **kwargs)
@@ -66,11 +67,26 @@ def admin_restricted(func):
     @wraps(func)
     def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
         user_id = update.effective_user.id
-        if user_id not in ADMIN_WHITELIST:
+        if user_id not in WHITELIST['admin']:
             LOG.info("User with ID %s attempted to run an admin restricted command. User was denied access.", update.effective_user.effective_user.id)
             return
         return func(update, context, *args, **kwargs)
     return wrapped
+
+def load_whitelist():
+    wl = WHITELIST
+    with open(WHITELIST_PATH, 'rb') as f:
+        wl = pk.load(f)
+    WHITELIST = wl
+
+@admin_restricted
+async def add_user_to_whitelist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    userid = ''.join(context.args)
+    LOG.info(f"User {update.effective_user.first_name} added user {userid} to the playerlist.")
+    WHITELIST["user"].append(int(userid))
+    with open(WHITELIST_PATH, 'wb') as f:
+        pk.dump(WHITELIST, f)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=rf"User with ID {userid} was added to the users list.")
 
 @user_restricted
 async def match_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -224,6 +240,7 @@ def main():
     application.add_handler(CommandHandler("addplayer", addplayer))
     application.add_handler(CommandHandler("playerlist", playerlist))
     application.add_handler(CommandHandler("leaderboard", leaderboard))
+    application.add_handler(CommandHandler("adduser", add_user_to_whitelist))
     
     match_convo = ConversationHandler(
         entry_points=[CommandHandler("addmatch", match_start)],
