@@ -4,6 +4,7 @@ from player_list import PlayerList
 from OFB import Role, Team, MAX_SCORE
 from bot_token import TOKEN
 from datetime import datetime
+from functools import wraps
 import os
 import logging
 
@@ -20,6 +21,8 @@ LOG = logging.getLogger(__name__)
 MATCH_CONVO_DICT = {}
 ATK_1, DEF_1, ATK_2, DEF_2, SCORE_1, SCORE_2 = range(6)
 
+USER_WHITELIST = [145267299]
+ADMIN_WHITELIST = [145267299]
 
 def generate_player_buttons() -> ReplyKeyboardMarkup:
     # Create a list of InlineKeyboardButtons
@@ -48,8 +51,28 @@ def start_log() -> None:
     
     # Add the file handler to the logger
     LOG.addHandler(file_handler)
-    
 
+def user_restricted(func):
+    @wraps(func)
+    def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
+        user_id = update.effective_user.id
+        if user_id not in USER_WHITELIST:
+            LOG.info("User with ID %s attempted to run a user restricted command. User was denied access.", update.effective_user.effective_user.id)
+            return
+        return func(update, context, *args, **kwargs)
+    return wrapped
+
+def admin_restricted(func):
+    @wraps(func)
+    def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
+        user_id = update.effective_user.id
+        if user_id not in ADMIN_WHITELIST:
+            LOG.info("User with ID %s attempted to run an admin restricted command. User was denied access.", update.effective_user.effective_user.id)
+            return
+        return func(update, context, *args, **kwargs)
+    return wrapped
+
+@user_restricted
 async def match_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     LOG.info("User %s initiated a match registration.", update.effective_user.first_name)
     
@@ -141,6 +164,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                                         text = f'\n'.join([f"{p.name}: {int(p.elo(role_dict[role]))}" for p in board]))
 
 
+@admin_restricted
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Greet user and load playerlist
     user = update.effective_user
@@ -157,7 +181,7 @@ async def playerlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     LOG.info(f"User {update.effective_user.first_name} requested the playerlist.")
     if not player_list:
         await context.bot.send_message(chat_id=update.effective_chat.id,
-                                        text = f'The player list is empty!')
+                                        text = f'The player list is empty. Please run the /start command!')
     else:
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                         text = f"Here's the list of players:")
@@ -165,6 +189,7 @@ async def playerlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                                         text = f'\n'.join([p.name for p in player_list]))
 
 
+@admin_restricted
 async def addplayer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Add a player. Argument needs to follow the command call i.e.
     # /addplayer New Player Name
@@ -176,6 +201,7 @@ async def addplayer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     PLAYERLIST.save_file()
 
 
+@user_restricted
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     MATCH_CONVO_DICT[update.effective_user.id] = []
