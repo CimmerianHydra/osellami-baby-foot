@@ -2,21 +2,24 @@ from telegram import ForceReply, Update, ReplyKeyboardMarkup, ReplyKeyboardRemov
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
 from player_list import PlayerList
 from OFB import Role, Team, MAX_SCORE
-import numpy as np
+from bot_token import TOKEN
+from datetime import datetime
+import os
 import logging
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    filemode='a'
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-TOKEN = '6719307383:AAFdBCyEXu_Rp5fP9yWF6INQeK0PCX0-cJA'
 PLAYERLIST = PlayerList()
 LOG = logging.getLogger(__name__)
 
 MATCH_DATA = []
 ATK_1, DEF_1, ATK_2, DEF_2, SCORE_1, SCORE_2 = range(6)
+
 
 def generate_player_buttons() -> ReplyKeyboardMarkup:
     # Create a list of InlineKeyboardButtons
@@ -25,42 +28,63 @@ def generate_player_buttons() -> ReplyKeyboardMarkup:
     reply_markup = ReplyKeyboardMarkup(keyboard)
     return reply_markup
 
+def start_log() -> None:
+    # Create a log folder if it doesn't exist
+    log_folder = 'logs'
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+
+    # Generate log file name using the current date and time
+    log_file_name = datetime.now().strftime('%Y_%m_%d_%H_%M_%S') + '_log.txt'
+    log_file_path = os.path.join(log_folder, log_file_name)
+
+    # Create a file handler and set the level to DEBUG
+    file_handler = logging.FileHandler(log_file_path)
+    file_handler.setLevel(logging.DEBUG)
+
+    # Create a formatter and set the formatter for the handler
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    # Add the file handler to the logger
+    LOG.addHandler(file_handler)
+    
 
 async def match_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     LOG.info("User %s initiated a match registration.", update.effective_user.first_name)
     await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Sure. Let's add a new match.")
     MATCH_DATA.clear()
-    await update.message.reply_text('Who was the attacker on the first team?', reply_markup=generate_player_buttons())
+    await update.message.reply_text('Who was the attacker on the green team?', reply_markup=generate_player_buttons())
     return ATK_1
 
 async def atk_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
     MATCH_DATA.append(PLAYERLIST.search_by_name(response))
-    await update.message.reply_text('Who was the defender on the first team?', reply_markup=generate_player_buttons())
+    await update.message.reply_text('Who was the defender on the green team?', reply_markup=generate_player_buttons())
     return DEF_1
 
 async def def_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
     MATCH_DATA.append(PLAYERLIST.search_by_name(response))
-    await update.message.reply_text('Who was the attacker on the second team?', reply_markup=generate_player_buttons())
+    await update.message.reply_text('Who was the attacker on the yellow team?', reply_markup=generate_player_buttons())
     return ATK_2
 
 async def atk_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
     MATCH_DATA.append(PLAYERLIST.search_by_name(response))
-    await update.message.reply_text('Who was the defender on the second team?', reply_markup=generate_player_buttons())
+    await update.message.reply_text('Who was the defender on the yellow team?', reply_markup=generate_player_buttons())
     return DEF_2
 
 async def def_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
     MATCH_DATA.append(PLAYERLIST.search_by_name(response))
-    await update.message.reply_text('How much did the first team score?')
+    await update.message.reply_text('How much did the green team score?')
     return SCORE_1
 
 async def score_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
     MATCH_DATA.append(int(response))
-    await update.message.reply_text('How much did the second team score?')
+    await update.message.reply_text('How much did the yellow team score?')
     return SCORE_2
 
 async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -82,6 +106,7 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         LOG.error("User %s encountered an error while registering a match.", update.effective_user.first_name)
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"There was a problem while adding your match. No data was stored.")
     return ConversationHandler.END
+
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     role_dict = {"ATK": Role.ATK,
@@ -111,12 +136,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Hi {user.full_name}!")
     await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Loading Player List...")
     PLAYERLIST.load_file()
+    start_log()
     await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Player List loaded.")
 
 
 async def playerlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Print playerlist
     player_list = PLAYERLIST.DATA
+    LOG.info(f"User {update.effective_user.first_name} requested the playerlist.")
     if not player_list:
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                         text = f'The player list is empty!')
