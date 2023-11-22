@@ -238,8 +238,6 @@ def main():
     PLAYERLIST.load_file()
     start_log()
     
-    print(WHITELIST)
-    
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(TOKEN).build()
     
