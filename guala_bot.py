@@ -23,7 +23,7 @@ MATCH_CONVO_DICT = {}
 ATK_1, DEF_1, ATK_2, DEF_2, SCORE_1, SCORE_2 = range(6)
 
 WHITELIST_PATH = "whitelist.bin"
-WHITELIST = {'admin':[],'user':[]}
+WHITELIST = {'admin':[145267299],'user':[]}
 
 def generate_player_buttons() -> ReplyKeyboardMarkup:
     # Create a list of InlineKeyboardButtons
@@ -58,8 +58,8 @@ def user_restricted(func):
     def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
         user_id = update.effective_user.id
         if user_id not in WHITELIST['user']:
-            LOG.info("User with ID %s attempted to run a user restricted command. User was denied access.", update.effective_user.effective_user.id)
-            return
+            LOG.info("User with ID %s attempted to run a user restricted command. User was denied access.", update.effective_user.id)
+            return restricted_msg(update, context)
         return func(update, context, *args, **kwargs)
     return wrapped
 
@@ -68,16 +68,15 @@ def admin_restricted(func):
     def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
         user_id = update.effective_user.id
         if user_id not in WHITELIST['admin']:
-            LOG.info("User with ID %s attempted to run an admin restricted command. User was denied access.", update.effective_user.effective_user.id)
-            return
+            LOG.info("User with ID %s attempted to run an admin restricted command. User was denied access.", update.effective_user.id)
+            return restricted_msg(update, context)
         return func(update, context, *args, **kwargs)
     return wrapped
 
 def load_whitelist():
-    wl = WHITELIST
+    global WHITELIST
     with open(WHITELIST_PATH, 'rb') as f:
-        wl = pk.load(f)
-    WHITELIST = wl
+        WHITELIST = pk.load(f)
 
 @admin_restricted
 async def add_user_to_whitelist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -181,14 +180,14 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 @admin_restricted
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Greet user and load playerlist
     user = update.effective_user
     await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Hi {user.full_name}!")
-    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Loading Player List...")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Loading data...")
     PLAYERLIST.load_file()
     start_log()
-    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Player List loaded.")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Data loaded.")
 
 
 async def playerlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -229,13 +228,23 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, I don't understand that command.")
 
+async def restricted_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, you don't have the permission to use that command.")
+
 
 def main():
+    # Loading data
+    load_whitelist()
+    PLAYERLIST.load_file()
+    start_log()
+    
+    print(WHITELIST)
+    
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(TOKEN).build()
     
     # on different commands - answer in Telegram
-    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("restart", restart))
     application.add_handler(CommandHandler("match", match_start))
     application.add_handler(CommandHandler("addplayer", addplayer))
     application.add_handler(CommandHandler("playerlist", playerlist))
