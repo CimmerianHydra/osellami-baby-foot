@@ -17,7 +17,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 PLAYERLIST = PlayerList()
 LOG = logging.getLogger(__name__)
 
-MATCH_DATA = []
+MATCH_CONVO_DICT = {}
 ATK_1, DEF_1, ATK_2, DEF_2, SCORE_1, SCORE_2 = range(6)
 
 
@@ -52,57 +52,68 @@ def start_log() -> None:
 
 async def match_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     LOG.info("User %s initiated a match registration.", update.effective_user.first_name)
+    
+    if not PLAYERLIST.DATA:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"The player list is empty. Please run the /start command!")
+        return ConversationHandler.END
+        
     await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Sure. Let's add a new match.")
-    MATCH_DATA.clear()
+    MATCH_CONVO_DICT[update.effective_user.id] = []
     await update.message.reply_text('Who was the attacker on the green team?', reply_markup=generate_player_buttons())
     return ATK_1
 
 async def atk_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
-    MATCH_DATA.append(PLAYERLIST.search_by_name(response))
+    MATCH_CONVO_DICT[update.effective_user.id].append(PLAYERLIST.search_by_name(response))
     await update.message.reply_text('Who was the defender on the green team?', reply_markup=generate_player_buttons())
     return DEF_1
 
 async def def_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
-    MATCH_DATA.append(PLAYERLIST.search_by_name(response))
+    MATCH_CONVO_DICT[update.effective_user.id].append(PLAYERLIST.search_by_name(response))
     await update.message.reply_text('Who was the attacker on the yellow team?', reply_markup=generate_player_buttons())
     return ATK_2
 
 async def atk_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
-    MATCH_DATA.append(PLAYERLIST.search_by_name(response))
+    MATCH_CONVO_DICT[update.effective_user.id].append(PLAYERLIST.search_by_name(response))
     await update.message.reply_text('Who was the defender on the yellow team?', reply_markup=generate_player_buttons())
     return DEF_2
 
 async def def_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
-    MATCH_DATA.append(PLAYERLIST.search_by_name(response))
+    MATCH_CONVO_DICT[update.effective_user.id].append(PLAYERLIST.search_by_name(response))
     await update.message.reply_text('How much did the green team score?')
     return SCORE_1
 
 async def score_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
-    MATCH_DATA.append(int(response))
+    MATCH_CONVO_DICT[update.effective_user.id].append(int(response))
     await update.message.reply_text('How much did the yellow team score?')
     return SCORE_2
 
 async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     response = update.message.text
-    MATCH_DATA.append(int(response))
+    MATCH_CONVO_DICT[update.effective_user.id].append(int(response))
     
     try:
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Match added successfully. Calculating new Elo scores...")
-        PLAYERLIST.resolve_match(Team(MATCH_DATA[0], MATCH_DATA[1]), Team(MATCH_DATA[2], MATCH_DATA[3]), MATCH_DATA[4], MATCH_DATA[5])
+        PLAYERLIST.resolve_match(Team(MATCH_CONVO_DICT[update.effective_user.id][0], MATCH_CONVO_DICT[update.effective_user.id][1]),
+                                 Team(MATCH_CONVO_DICT[update.effective_user.id][2], MATCH_CONVO_DICT[update.effective_user.id][3]),
+                                 MATCH_CONVO_DICT[update.effective_user.id][4],
+                                 MATCH_CONVO_DICT[update.effective_user.id][5])
+        data = MATCH_CONVO_DICT[update.effective_user.id]
+        MATCH_CONVO_DICT[update.effective_user.id] = []
         LOG.info("User %s successfully registered a match.", update.effective_user.first_name)
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Here are the new Elo scores:")
-        message = f"{MATCH_DATA[0].name}'s ATK Elo: {int(MATCH_DATA[0].atk_elo)}\n" + \
-                f"{MATCH_DATA[1].name}'s DEF Elo: {int(MATCH_DATA[1].def_elo)}\n" + \
-                f"{MATCH_DATA[2].name}'s ATK Elo: {int(MATCH_DATA[2].atk_elo)}\n" + \
-                f"{MATCH_DATA[3].name}'s DEF Elo: {int(MATCH_DATA[3].def_elo)}\n"
+        message = f"{data[0].name}'s ATK Elo: {int(data[0].atk_elo)}\n" + \
+                  f"{data[1].name}'s DEF Elo: {int(data[1].def_elo)}\n" + \
+                  f"{data[2].name}'s ATK Elo: {int(data[2].atk_elo)}\n" + \
+                  f"{data[3].name}'s DEF Elo: {int(data[3].def_elo)}\n"
         PLAYERLIST.save_file()
         await context.bot.send_message(chat_id=update.effective_chat.id, text = message)
     except:
+        MATCH_CONVO_DICT[update.effective_user.id] = []
         LOG.error("User %s encountered an error while registering a match.", update.effective_user.first_name)
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"There was a problem while adding your match. No data was stored.")
     return ConversationHandler.END
@@ -167,6 +178,7 @@ async def addplayer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
+    MATCH_CONVO_DICT[update.effective_user.id] = []
     LOG.info("User %s canceled the conversation.", user.first_name)
     await update.message.reply_text("Match registration has been canceled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END

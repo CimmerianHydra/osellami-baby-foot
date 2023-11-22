@@ -86,7 +86,7 @@ class Match:
         self.team_2.attacker.add_elo(Role.ATK, self.team_2.attacker.K_factor(Role.ATK) * cappotto * (team_2_win - team_2_attacker_ES))
         self.team_2.defender.add_elo(Role.DEF, self.team_2.defender.K_factor(Role.ATK) * cappotto * (team_2_win - team_2_defender_ES))
 
-if __name__ == 'main':
+if __name__ == '__main__':
     from icecream import ic
 
     player_list = []
@@ -98,17 +98,21 @@ if __name__ == 'main':
         Player("Pasquale Barbato")
     )
     player_list.append(
-        Player("Vittorio Grimaldi", atk_elo=1000)
+        Player("Vittorio Grimaldi")
     )
     player_list.append(
-        Player("Ciro Pentangelo", def_elo=1000)
+        Player("Ciro Pentangelo")
     )
 
     first_team = Team(player_list[0], player_list[1])
     second_team = Team(player_list[2], player_list[3])
     
     sample_match = Match(first_team, second_team)
-    sample_match.resolve_match(8, 0)
+    sample_match.resolve_match(8, 7)
+    
+    second_sample_match = Match(second_team, first_team)
+    second_sample_match.resolve_match(7, 8)
+    
     for p in player_list:
         ic(p.elo(Role.ATK))
         ic(p.elo(Role.DEF))
