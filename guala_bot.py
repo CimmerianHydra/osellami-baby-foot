@@ -157,11 +157,9 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-@user_restricted
 async def leaderboard_atk(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await leaderboard(update, context, "ATK")
     
-@user_restricted
 async def leaderboard_def(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await leaderboard(update, context, "DEF")
 
