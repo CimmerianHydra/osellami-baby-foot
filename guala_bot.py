@@ -157,15 +157,17 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+@user_restricted
+async def leaderboard_atk(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await leaderboard(update, context, "ATK")
+    
+@user_restricted
+async def leaderboard_def(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await leaderboard(update, context, "DEF")
+
+async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE, role: str) -> None:
     role_dict = {"ATK": Role.ATK,
                  "DEF": Role.DEF}
-    
-    role = ''.join(context.args)
-    if role not in role_dict:
-        await context.bot.send_message(chat_id=update.effective_chat.id,
-                                        text = f"The 'leaderboard' command accepts ATK or DEF as arguments. Try this:\n/leaderboard ATK\n/leaderboard DEF")
-        return
     
     LOG.info(f"User {update.effective_user.first_name} requested the leaderboard for role {role}.")
     board = PLAYERLIST.leaderboard(role_dict[role])
@@ -246,7 +248,8 @@ def main():
     application.add_handler(CommandHandler("match", match_start))
     application.add_handler(CommandHandler("addplayer", addplayer))
     application.add_handler(CommandHandler("playerlist", playerlist))
-    application.add_handler(CommandHandler("leaderboard", leaderboard))
+    application.add_handler(CommandHandler("boardatk", leaderboard_atk))
+    application.add_handler(CommandHandler("boarddef", leaderboard_def))
     application.add_handler(CommandHandler("adduser", add_user_to_whitelist))
     
     match_convo = ConversationHandler(
