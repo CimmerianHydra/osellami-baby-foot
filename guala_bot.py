@@ -59,7 +59,6 @@ def start_log() -> None:
 def current_time_to_str():
     current_time = datetime.now()
     formatted_time = current_time.strftime('%Y-%m-%d %H:%M')
-    print(formatted_time)
     return formatted_time
 
 
@@ -164,9 +163,9 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                   f"{data[3].name}'s DEF Elo: {int(data[3].def_elo)}\n"
         PLAYERLIST.save_file()
         await context.bot.send_message(chat_id=update.effective_chat.id, text = message)
-    except:
+    except Exception as e:
         MATCH_CONVO_DICT[update.effective_user.id] = []
-        LOG.error("User %s encountered an error while registering a match.", update.effective_user.first_name)
+        LOG.error(f"User {update.effective_user.first_name} encountered an error while registering a match: {e}.")
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"There was a problem while adding your match. No data was stored.")
     return ConversationHandler.END
 
@@ -195,17 +194,17 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE, role: 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
-    commands = r"\start - Start Guala and load player list." + "\n" + \
-            r"\cancel - Cancel the current conversation (cancel match)." + "\n" + \
-            r"\addmatch - Start a conversation to add a match and update Elo ranking" + "\n" + \
-            r"\playerlist - Print the list of players." + "\n" + \
-            r"\boardatk - Print the leaderboard for the ATK role." + "\n" + \
-            r"\boarddef - Print the leaderboard for the DEF role."
+    commands = r"/start - Start Guala and load player list." + "\n" + \
+            r"/cancel - Cancel the current conversation (cancel match)." + "\n" + \
+            r"/addmatch - Start a conversation to add a match and update Elo ranking" + "\n" + \
+            r"/playerlist - Print the list of players." + "\n" + \
+            r"/boardatk - Print the leaderboard for the ATK role." + "\n" + \
+            r"/boarddef - Print the leaderboard for the DEF role."
     
     # Greet user and show command list
     user = update.effective_user
-    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Hi {user.full_name}!")
-    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Here's a list of commands: \\n{commands}!")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text = f"Hi {user.full_name}!")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text = f"Here's a list of commands: \n{commands}!")
 
 @admin_restricted
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
