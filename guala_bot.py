@@ -67,7 +67,7 @@ def user_restricted(func):
     def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
         user_id = update.effective_user.id
         if user_id not in WHITELIST['user']:
-            LOG.info("User with ID %s attempted to run a user restricted command. User was denied access.", update.effective_user.id)
+            LOG.info(f"User {update.effective_user.name} with ID {update.effective_user.id} attempted to run a user restricted command. User was denied access.")
             return restricted_msg(update, context)
         return func(update, context, *args, **kwargs)
     return wrapped
@@ -77,7 +77,7 @@ def admin_restricted(func):
     def wrapped(update: Update, context: ContextTypes, *args, **kwargs):
         user_id = update.effective_user.id
         if user_id not in WHITELIST['admin']:
-            LOG.info("User with ID %s attempted to run an admin restricted command. User was denied access.", update.effective_user.id)
+            LOG.info(f"User {update.effective_user.name} with ID {update.effective_user.id} attempted to run an admin restricted command. User was denied access.")
             return restricted_msg(update, context)
         return func(update, context, *args, **kwargs)
     return wrapped
@@ -90,15 +90,15 @@ def load_whitelist():
 @admin_restricted
 async def add_user_to_whitelist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     userid = ''.join(context.args)
-    LOG.info(f"User {update.effective_user.first_name} added user {userid} to the playerlist.")
+    LOG.info(f"User {update.effective_user.name} added user {userid} to the whitelist.")
     WHITELIST["user"].append(int(userid))
     with open(WHITELIST_PATH, 'wb') as f:
         pk.dump(WHITELIST, f)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=rf"User with ID {userid} was added to the users list.")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=rf"User with ID {userid} was added to the users whitelist.")
 
 @user_restricted
 async def match_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    LOG.info("User %s initiated a match registration.", update.effective_user.first_name)
+    LOG.info("User %s initiated a match registration.", update.effective_user.name)
     
     if not PLAYERLIST.DATA:
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"The player list is empty. Please run the /start command!")
@@ -150,7 +150,7 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                                  Team(data[2], data[3]),
                                  data[4], data[5])
         MATCH_CONVO_DICT[update.effective_user.id] = []
-        LOG.info("User %s successfully registered a match.", update.effective_user.first_name)
+        LOG.info("User %s successfully registered a match.", update.effective_user.name)
         
         # Format current time for matchlist excel file:
         current_time = current_time_to_str()
@@ -165,7 +165,7 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await context.bot.send_message(chat_id=update.effective_chat.id, text = message)
     except Exception as e:
         MATCH_CONVO_DICT[update.effective_user.id] = []
-        LOG.error(f"User {update.effective_user.first_name} encountered an error while registering a match: {e}.")
+        LOG.error(f"User {update.effective_user.name} encountered an error while registering a match: {e}.")
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"There was a problem while adding your match. No data was stored.")
     return ConversationHandler.END
 
@@ -180,7 +180,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE, role: 
     role_dict = {"ATK": Role.ATK,
                  "DEF": Role.DEF}
     
-    LOG.info(f"User {update.effective_user.first_name} requested the leaderboard for role {role}.")
+    LOG.info(f"User {update.effective_user.name} requested the leaderboard for role {role}.")
     board = PLAYERLIST.leaderboard(role_dict[role])
     if not board:
         await context.bot.send_message(chat_id=update.effective_chat.id,
@@ -220,7 +220,7 @@ async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def playerlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Print playerlist
     player_list = PLAYERLIST.DATA
-    LOG.info(f"User {update.effective_user.first_name} requested the playerlist.")
+    LOG.info(f"User {update.effective_user.name} requested the playerlist.")
     if not player_list:
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                         text = f'The player list is empty. Please run the /start command!')
@@ -236,7 +236,7 @@ async def addplayer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Add a player. Argument needs to follow the command call i.e.
     # /addplayer New Player Name
     player_name = ' '.join(context.args)
-    LOG.info(f"User {update.effective_user.first_name} added player {player_name} to the playerlist.")
+    LOG.info(f"User {update.effective_user.name} added player {player_name} to the playerlist.")
     await context.bot.send_message(chat_id=update.effective_chat.id, text=rf"Adding player {player_name}...")
     PLAYERLIST.add_new_player(player_name)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=rf"Player {player_name} was added.")
