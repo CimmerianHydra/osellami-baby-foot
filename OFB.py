@@ -10,6 +10,7 @@ class Role(Enum):
     ATK = 0
     DEF = 1
 
+
 class Player:
 
     def __init__(self, name: str, atk_elo: float = 1200.0, def_elo: float = 1200.0) -> None:
@@ -18,11 +19,15 @@ class Player:
         self.def_elo = def_elo
         self.atk_exp = 0
         self.def_exp = 0
+        
+        self.elo_history = [(self.atk_elo, self.def_elo)]
     
     def add_elo(self, role:Role, value: float) -> None:
         match role:
             case Role.ATK: self.atk_elo += value
             case Role.DEF: self.def_elo += value
+        
+        self.elo_history.append((self.atk_elo, self.def_elo))
     
     def elo(self, role:Role) -> float:
         match role:
@@ -33,6 +38,7 @@ class Player:
         match role:
             case Role.ATK: return K_MULTIPLIER * np.reciprocal( 1 + self.atk_exp/K_PARAMETER )
             case Role.DEF: return K_MULTIPLIER * np.reciprocal( 1 + self.def_exp/K_PARAMETER )
+
 
 class Team:
 

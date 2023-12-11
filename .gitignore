@@ -154,3 +154,5 @@ cython_debug/
 # SPECIFIC FILES
 bot_token.py
 logs/
+match_list.xlsx
+player_list.bin

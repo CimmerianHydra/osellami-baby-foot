@@ -1,6 +1,7 @@
 from telegram import ForceReply, Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
 from player_list import PlayerList
+from match_list import MatchList
 from OFB import Role, Team, MAX_SCORE
 from bot_token import TOKEN
 from datetime import datetime
@@ -17,6 +18,7 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 PLAYERLIST = PlayerList()
+MATCHLIST = MatchList()
 LOG = logging.getLogger(__name__)
 
 MATCH_CONVO_DICT = {}
@@ -52,6 +54,14 @@ def start_log() -> None:
     
     # Add the file handler to the logger
     LOG.addHandler(file_handler)
+
+
+def current_time_to_str():
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('%Y-%m-%d %H:%M')
+    print(formatted_time)
+    return formatted_time
+
 
 def user_restricted(func):
     @wraps(func)
@@ -136,13 +146,17 @@ async def score_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     try:
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Match added successfully. Calculating new Elo scores...")
-        PLAYERLIST.resolve_match(Team(MATCH_CONVO_DICT[update.effective_user.id][0], MATCH_CONVO_DICT[update.effective_user.id][1]),
-                                 Team(MATCH_CONVO_DICT[update.effective_user.id][2], MATCH_CONVO_DICT[update.effective_user.id][3]),
-                                 MATCH_CONVO_DICT[update.effective_user.id][4],
-                                 MATCH_CONVO_DICT[update.effective_user.id][5])
         data = MATCH_CONVO_DICT[update.effective_user.id]
+        PLAYERLIST.resolve_match(Team(data[0], data[1]),
+                                 Team(data[2], data[3]),
+                                 data[4], data[5])
         MATCH_CONVO_DICT[update.effective_user.id] = []
         LOG.info("User %s successfully registered a match.", update.effective_user.first_name)
+        
+        # Format current time for matchlist excel file:
+        current_time = current_time_to_str()
+        MATCHLIST.add_match(current_time, data[0].name, data[1].name, data[2].name, data[3].name, data[4], data[5], update.effective_user.name)
+        
         await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Here are the new Elo scores:")
         message = f"{data[0].name}'s ATK Elo: {int(data[0].atk_elo)}\n" + \
                   f"{data[1].name}'s DEF Elo: {int(data[1].def_elo)}\n" + \
@@ -178,6 +192,20 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE, role: 
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                         text = f'\n'.join([f"{p.name}: {int(p.elo(role_dict[role]))}" for p in board]))
 
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    
+    commands = r"\start - Start Guala and load player list." + "\n" + \
+            r"\cancel - Cancel the current conversation (cancel match)." + "\n" + \
+            r"\addmatch - Start a conversation to add a match and update Elo ranking" + "\n" + \
+            r"\playerlist - Print the list of players." + "\n" + \
+            r"\boardatk - Print the leaderboard for the ATK role." + "\n" + \
+            r"\boarddef - Print the leaderboard for the DEF role."
+    
+    # Greet user and show command list
+    user = update.effective_user
+    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Hi {user.full_name}!")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text = rf"Here's a list of commands: \\n{commands}!")
 
 @admin_restricted
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -216,6 +244,11 @@ async def addplayer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     PLAYERLIST.save_file()
 
 
+@admin_restricted
+async def revert_last_match(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = MATCHLIST.remove_last_match()
+    # TODO: implement reverting last match
+
 @user_restricted
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
@@ -236,12 +269,14 @@ def main():
     # Loading data
     load_whitelist()
     PLAYERLIST.load_file()
+    MATCHLIST.load_file()
     start_log()
     
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(TOKEN).build()
     
     # on different commands - answer in Telegram
+    application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("restart", restart))
     application.add_handler(CommandHandler("match", match_start))
     application.add_handler(CommandHandler("addplayer", addplayer))
@@ -249,6 +284,7 @@ def main():
     application.add_handler(CommandHandler("boardatk", leaderboard_atk))
     application.add_handler(CommandHandler("boarddef", leaderboard_def))
     application.add_handler(CommandHandler("adduser", add_user_to_whitelist))
+    application.add_handler(CommandHandler("revert", revert_last_match))
     
     match_convo = ConversationHandler(
         entry_points=[CommandHandler("addmatch", match_start)],

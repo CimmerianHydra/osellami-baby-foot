@@ -3,18 +3,18 @@ import pickle as pk
 
 class PlayerList:
     
-    PLAYER_LIST_PATH = r'player_list.bin'
+    PATH = r'player_list.bin'
     DATA:list[Player] = []
     
     def __init__(self) -> None:
         return
 
     def load_file(self):
-        with open(self.PLAYER_LIST_PATH, 'rb') as f:
+        with open(self.PATH, 'rb') as f:
             self.DATA = pk.load(f)
 
     def save_file(self):
-        with open(self.PLAYER_LIST_PATH, 'wb') as f:
+        with open(self.PATH, 'wb') as f:
             pk.dump(self.DATA, f)
     
     def erase_list(self):
